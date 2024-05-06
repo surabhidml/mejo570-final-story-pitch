@@ -1,0 +1,557 @@
+---
+title: "Surabhi Damle Final Story Pitch"
+date: "05/02/2024"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+
+#adapted from https://github.com/associatedpress/apstyle/blob/master/R/rmd_render.R     #using method from https://stackoverflow.com/questions/26174565/r-in-rstudio-how-do-i-make-knitr-output-to-a-different-folder-to-avoid-clutteri
+#make sure Tools -> Global Options -> R Markdown -> Evaluate chunks in directory is set to "project"
+knit: (function(inputFile, encoding) {rmarkdown::render(inputFile, encoding = encoding, knit_root_dir = rprojroot::find_rstudio_root_file(), output_dir = "docs")})
+---
+<!-- Timestamp: leave this in to automatically track when a file is rendered -->
+*Rendered at `r format(Sys.time(), '%I:%M %p, %b. %d, %Y')`*
+
+<!-- Contact info: leave author/reporter/editor contact info here -->
+*Surabhi Damle (<sdamle@unc.edu>)*
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+
+knitr::opts_knit$set(
+  root.dir = rprojroot::find_rstudio_root_file()
+  )
+```
+
+```{r initialize}
+#devtools::install_github("associatedpress/apstyle")
+library(apstyle) #AP ggplot theme can be applied to a ggplot object via + theme_ap()
+
+
+# Load files, environment variables, libraries, etc. here
+library(tidyverse)
+library(tidycensus)
+library(patchwork)
+
+```
+
+```{r results='hide'}
+#Data Below was downloaded from NC General Assembly:
+
+congressional_shp2024 <- sf::st_read("data/congressional shape file/SL 2023-145.shp")#Congressional District file for 2024
+
+congressional_shp2022 <- sf::st_read("data/interim 2022 congressional shape file/Interim Congressional.shp")#Congressional Districts for 2022 interim map
+
+
+#All data loaded in below was converted from PDF to CSV using Tabula and is from NC General Assembly 
+
+congressional_race_data <- read_csv("data/congressional_race_data.csv")#Congressional race data for 2024
+
+congressional_party_data <- read_csv("data/congressional_party_data.csv")#2024 Congressional party registration data
+
+congressional_2024preselec_data <- read_csv("data/congressional_2024_preselection.csv")#2024 Congressional Districts with corresponding 2020 presidential election vote share
+
+congressional_2022preselec_data <- read_csv("data/congressional_2022interim_preselection.csv")#2022 Congressional Districts with corresponding 2020 presidential election vote share
+
+
+#Data that uses Census API and tidycensus is loaded in Data Interview section
+```
+
+<!-- Project structure adapted from https://github.com/associatedpress/cookiecutter-r-project. To use on your computer follow these instructions: https://datakit.ap.org/  -->
+
+## Story Pitch
+
+<!-- This section is for writing your three-ish paragraph story pitch. -->
+
+**Lawsuits challenge recent North Carolina congressional redistricting in the Triad Region**
+
+North Carolina Congressional District 6 once represented the diverse Triad region, but due to 2023 redistricting it now stretches from High Point to Charlotte’s suburbs. At least two lawsuits, one by the NAACP, challenged the new district, citing racial gerrymandering. The old district had 31 percent Black residents, but the new lines make that figure 19 percent. 
+
+<!-- Code below is for story pitch data vis, also repeated in data interview-->
+```{r results='hide'}
+census_tract<- get_acs(geography = "tract",
+              variables = "B02001_003",
+              summary_var = "B02001_001",
+              state="NC",
+              year=2022,
+              geometry = T)
+census_tract_race<-census_tract%>%
+  mutate(percent_black= estimate/summary_est)
+```
+
+```{r fig.width=6, fig.height=7, fig.align='center'}
+#The code below puts the coordinates for the 3 triad cities into a dataframe.
+triad_cities <- data.frame(
+  name = c("Greensboro", "Winston-Salem", "High Point"),
+  lon = c(-79.791977,-80.243736, -80.003937 ),
+  lat = c(36.072636,36.096260, 35.953972)
+)
+
+#This allows for dataframes to be joined easier later
+congressional_shp2024<-congressional_shp2024%>%
+  rename("District"="DISTRICT")
+congressional_shp2024$District<-as.double(congressional_shp2024$District)
+congressional_shp2022<-congressional_shp2022%>%
+  rename("District"="DISTRICT")
+
+#plots 2024 districts 
+ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="Congressional District 6 in 2024", 
+  fill="Percentage Black population",
+  subtitle= "From a zoomed-in view, it's clear the 2023 map separates the Triad 
+— Greensboro, High Point and Winston-Salem — into three different 
+districts. Specifically, high concentration of Black populations in 
+Greensboro and Winston-Salem are divided between districts",
+       caption= "Source: NC Census Bureau and NC General Assembly")+  
+  geom_sf_label(data= congressional_shp2024, aes(label = District), size = 5, color = "black", fill = "white", label.size = 0.5, label.padding = unit(.1, "lines"))+
+  geom_point(data = triad_cities, aes(x = lon, y = lat), color = "black", size = 2, shape=24, fill="red") +
+  geom_text(data = triad_cities, aes(x = lon, y = lat, label = name), vjust = -1, color = "black", size=3)+
+  geom_sf(data=congressional_shp2024, fill=NA, color="black", size=3)+ viridis::scale_fill_viridis(direction=-1)+
+  coord_sf(xlim = c(-80.8, -79.5), ylim = c(35.3, 36.3))+
+  
+  ggthemes::theme_fivethirtyeight()+
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.title = element_text(size = 14),
+        plot.subtitle = element_text(size = 11))
+
+#plots 2022 districts
+ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="Congressional District 6 in 2022", 
+       fill="Percentage Black population", 
+       subtitle="The 2022 congressional maps preserve the Triad to mostly one district. 
+District 6 contains Greensboro, High Point, and parts of Winston-Salem.",
+       caption= "Source: NC Census Bureau and NC General Assembly")+  
+geom_sf(data=congressional_shp2022, fill=NA, color="black", size=5)+
+  viridis::scale_fill_viridis(direction=-1)+
+  geom_sf_label(data= congressional_shp2022, aes(label = District), size = 5, color = "black", fill = "white", label.size = 0.5, label.padding = unit(.1, "lines"))+
+    geom_point(data = triad_cities, aes(x = lon, y = lat), color = "black", size = 2, shape=24, fill="red") +
+  geom_text(data = triad_cities, aes(x = lon, y = lat, label = name), vjust = -1, color = "black", size=3)+
+  coord_sf(xlim = c(-80.4, -79.1), ylim = c(35.5, 36.5))+
+  ggthemes::theme_fivethirtyeight()+
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.title = element_text(size = 14),
+        plot.subtitle = element_text(size = 11))
+```
+
+
+The new maps show signs of the gerrymandering practice, cracking, where minority votes are split between districts to weaken their power. The new district also leans Republican with 14 percent more voters in the choosing Trump in 2020, than in the old district. This shift has led current Democratic representative, Kathy Manning, not to seek re-election. 
+
+To be sure, the NC General Assembly said they did not use racial data to draw the district lines. Districts 1, 12 and 14 are also challenged in lawsuits. 
+
+**Pitch memo**
+
+Redistricting is a topic that comes up again and again in North Carolina, however, there is much to explore regarding the new 2023 congressional maps. Although many stories have been written about the issue already, not many stories out there focus on the local impact of redistricting. My story would take a local angle looking just at District 6 in NC, and how voters in the area feel about these changes. The story is timely with the upcoming 2024 elections and covers an issue in North Carolina that limits democracy in the state. Additionally, these districts in North Carolina could determine who wins control of the House in the fall, so there is a national relevance to this local story. The data for this story is nearly all publicly available online. I believe with more time and analysis, I could determine more specifically which communities in the Triad region would be impacted by redistricting.
+
+## Data Interview
+<!-- This section is for the final clean transcript of your data interview. -->
+
+
+My original objective was to see if I could find visual evidence of  gerrymandering in North Carolina congressional district maps. The drawing of congressional Districts is something that has repeatedly been brought to the courts in North Carolina. In NC, partisan gerrymandering is legal, however racial gerrymandering is because of federal voting rights acts, so I specifically wanted to analyze this type of gerrymandering. 
+
+
+**Examining congressional maps to see if there any clear racial trends**
+
+The code below loads in race data by tract using tidycensus. It then calculates the percentage of black residents in each tract.
+```{r echo=TRUE, results='hide'}
+census_tract<- get_acs(geography = "tract",
+              variables = "B02001_003",
+              summary_var = "B02001_001",
+              state="NC",
+              year=2022,
+              geometry = T)
+census_tract_race<-census_tract%>%
+  mutate(percent_black= estimate/summary_est)
+```
+
+The code below maps the 2024 congressional districts on top of the tract racial data. This allows us to see how "cracking" and "packing" techniques could have been used to weaken the Black vote in NC.
+
+*Note: The race data here comes from 2022 which is as new as tidycensus has.*
+
+```{r}
+ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="2024 Congressional Districts with Percent Black Population",
+       fill= "Percent Black population")+  
+geom_sf(data=congressional_shp2024, fill=NA, color="black")+ viridis::scale_fill_viridis(direction=-1)+
+  geom_sf_label(data= congressional_shp2024, aes(label = District), size = 3, color = "black", fill = NA, label.size = 0.5, label.padding = unit(.1, "lines"))+
+  theme_void()
+```
+
+According to one [lawsuit](https://storage.courtlistener.com/recap/gov.uscourts.ncmd.97319/gov.uscourts.ncmd.97319.1.0_2.pdf), "Congressional Districts 1, 6, 12, and 14 are unconstitutional racial gerrymanders". 
+
+Overall, from this map I could tell that some districts look really oddly shaped. In District 6, it looks like "cracking" gerrymandering methods were used. However to get a more clear understanding I wanted to compare these maps to those of 2022. The 2022 maps were court mandated, due to previous gerrymandering lawsuits.
+
+Examining 2022 maps:
+```{r}
+ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="2022 Congressional Districts with Percent Black Population",
+       fill= "Percent Black population")+  
+geom_sf(data=congressional_shp2022, fill=NA, color="black")+
+  viridis::scale_fill_viridis(direction=-1)+
+  geom_sf_label(data= congressional_shp2022, aes(label = District), size = 3, color = "black", fill = NA, label.size = 0.5, label.padding = unit(.1, "lines"))+
+  theme_void()
+```
+
+From the 2022 map above, I spotted clear differences with the 2024 map. Specifically districts 6, 12 and 14, and 1 look different in terms of the way lines were drawn and racial make up of the surrounding regions. This lines up with some of the districts that are stated as unconstitutional in lawsuits. 
+
+
+Next, I wanted to see how this changes the overall race make up in each district. 
+
+
+The code below joins race data with the congressional shape data, and creates a plot that shows the percent of Black population in each Congressional District.
+```{r fig.width=8}
+congressional_shp_race_2024<- left_join(congressional_shp2024,congressional_race_data, 
+                                by="District")
+ggplot(data=congressional_shp_race_2024) + geom_sf(aes(fill= Percent_Black), color="black") +  
+     geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines"))+
+  scale_fill_gradient2(low = "white", high = "#6a429e",
+                       name = "Percent Black Population",
+                       limits= c(0,.5))+
+  ggthemes::theme_fivethirtyeight()+labs(title="Percent Black population in 2024 Congressional districts", caption="Source:Census") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+Looking at the map alone, I found that district 1 and 12 had the highest percentage Black population.
+
+
+I confirmed this by below by ordering my data:
+```{r}
+congressional_race_data%>%
+  arrange(desc(Percent_Black))
+```
+
+From this table I found that only District 1 and 12 have Black population percentages above 30%. 
+
+Next, I wanted to examine how the racial make up of the districts changed from 2022 to 2024. 
+
+The code below loads the race data for 2022 by congressional district, and creates a column for the percentage of black residents in each district. 
+
+*Note: the data here is all residents not voting age residents which is consistent with the 2024 data*
+```{r echo = T, results = 'hide'}
+congressional_race_2022<- get_acs(geography = "congressional district",
+              variables = "B02001_003",
+              summary_var = "B02001_001",
+              state="NC",
+              year=2022,
+              geometry = T)
+
+congressional_race_2022<-congressional_race_2022%>%
+  mutate(percent_black= estimate/summary_est)
+```
+
+```{r}
+#allows for District numbers to be plotted on map
+congressional_race_2022<-congressional_race_2022%>%
+    mutate(District = str_trim(NAME)) %>%
+  mutate(District = str_sub(District,1,str_length(District)-33))%>%
+           mutate(District=str_sub(District,24))
+
+congressional_race_2022$District<-as.double(congressional_race_2022$District)
+```
+
+```{r fig.width=8}
+ggplot(data=congressional_race_2022) + geom_sf(aes(fill= percent_black), color="black") +  
+     geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines"))+
+  scale_fill_gradient2(low = "white", high = "#6a429e",
+                       name = "Percent Black Population",
+                       limits= c(0,.5))+
+  ggthemes::theme_fivethirtyeight()+labs(title="Percent Black population in 2022 Congressional districts",  caption="Source: Census Bureau") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+From the 2022 map we see, that there appears to be more districts with a higher black population.
+
+The code below sorts the race data to further examine trends. 
+```{r}
+congressional_race_2022%>%as.tibble()%>%
+  select(District, percent_black)%>%
+  arrange(desc(percent_black))
+```
+
+From the sorted table here, I found that in 2022 District 1 and 12 still had the largest black population percentages. However many of the districts seemed to have a different racial make than in 2024.
+
+To further examine this I wanted to find the differences between the 2024 and 2022 percentages. The code below joins the race data for 2022 and 2024 and finds the difference between the *percent_black* variable in each year. It then sorts the data so that the districts with the largest differences are first. 
+```{r}
+race2022<-congressional_race_2022%>%as.tibble()%>%
+  select(District, percent_black)%>%
+  rename(percent_black_2022=percent_black)
+
+
+race2024<-congressional_race_data%>%
+  select(District, Percent_Black)%>%
+  rename(percent_black_2024=Percent_Black)
+
+racecompare<-left_join(race2024,race2022)%>%
+  mutate(black_perecent_diff=percent_black_2024-percent_black_2022)%>%
+  arrange(desc(abs(black_perecent_diff)))
+
+racecompare
+```
+
+
+From the table, I found that the most alarming change in the race make up of a district was in District 6. The newly drawn district has a black population that is 12.6% less than the 2022 district. 
+
+**Because District 6 looked the most alarming, I wanted to zoom in on its map.**
+```{r}
+#The code below puts the coordinates for the 3 triad cities into a dataframe.
+triad_cities <- data.frame(
+  name = c("Greensboro", "Winston-Salem", "High Point"),
+  lon = c(-79.791977,-80.243736, -80.003937 ),
+  lat = c(36.072636,36.096260, 35.953972)
+)
+```
+
+
+The code below examines District 6 in 2024, looking at percentage black population.
+
+```{r fig.width=7,fig.height= 8}
+p1<-ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="Congressional District 6 in 2024", 
+  fill="Percentage Black population",
+  subtitle= "From a zoomed-in view, it's clear the 2023 map separates the Triad — Greensboro, High 
+Point and Winston-Salem — into three different districts. Specifically, high concentrations 
+of Black residents in Greensboro and Winston-Salem are divided between districts",
+       caption= "Source: NC Census Bureau and NC General Assembly")+  
+  geom_sf_label(data= congressional_shp2024, aes(label = District), size = 5, color = "black", fill = "white", label.size = 0.5, label.padding = unit(.1, "lines"))+
+  geom_point(data = triad_cities, aes(x = lon, y = lat), color = "black", size = 2, shape=24, fill="red") +
+  geom_text(data = triad_cities, aes(x = lon, y = lat, label = name), vjust = -1, color = "black", size=3)+
+  geom_sf(data=congressional_shp2024, fill=NA, color="black", size=3)+ viridis::scale_fill_viridis(direction=-1)+
+  coord_sf(xlim = c(-80.8, -79.5), ylim = c(35.3, 36.3))+
+  
+  ggthemes::theme_fivethirtyeight()+
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.title = element_text(size = 14),
+        plot.subtitle = element_text(size = 11))
+
+p1
+```
+
+
+From this zoomed in view you can see how the 2023 maps separate the Triad — Greensboro, High Point and Winston-Salem — into 3 different Districts. Specifically you can see the high Black populations in Greensboro and Winston-Salem were separated into two districts. The new district 6 contains the suburbs of Greensboro, High Point and rural areas that stretch all the way down to Charlotte suburbs. 
+
+
+Next I wanted to examine the same map for 2022 to see the differences: 
+
+```{r fig.width=7, fig.height=8}
+
+p2<-ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="Congressional District 6 in 2022", 
+       fill="Percentage Black population", 
+       subtitle="The 2022 congressional maps preserve the Triad to mostly one district. 
+District 6 contains Greensboro, High Point, and parts of Winston Salem.",
+       caption= "Source: NC Census Bureau and NC General Assembly")+  
+geom_sf(data=congressional_shp2022, fill=NA, color="black", size=5)+
+  viridis::scale_fill_viridis(direction=-1)+
+  geom_sf_label(data= congressional_shp2022, aes(label = District), size = 5, color = "black", fill = "white", label.size = 0.5, label.padding = unit(.1, "lines"))+
+    geom_point(data = triad_cities, aes(x = lon, y = lat), color = "black", size = 2, shape=24, fill="red") +
+  geom_text(data = triad_cities, aes(x = lon, y = lat, label = name), vjust = -1, color = "black", size=3)+
+  coord_sf(xlim = c(-80.4, -79.1), ylim = c(35.5, 36.5))+
+  ggthemes::theme_fivethirtyeight()+
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.title = element_text(size = 14),
+        plot.subtitle = element_text(size = 11))
+
+p2
+```
+
+Looking at the 2022 map, I noticed that District 6 used to contain all of Greensboro, all of High Point and some of Winston Salem.
+
+
+Next, I wanted to examine the differences in partisanship in the two congressional maps. Even though partisan gerrymandering is legal in NC, I wanted to see how the new districts are shaping up to the old ones.
+
+I did this by looking at data on the 2020 presidential results in each district, both in 2022 and 2024. This data was available online on the NC General Assembly website. 
+
+I used this data to create a new variable *two_party_diff*, which took the difference of Biden's vote percentage and Trump's vote percentage. The new variable tells us how much each district leans toward the Democratic Party or Biden. 
+
+```{r}
+#The code below creates the two party difference variable
+congressional_2024preselec_data<-congressional_2024preselec_data%>%
+  mutate(two_party_diff=Percent_Dem-Percent_Rep)
+
+
+congressional_shp_preselec_2024<- left_join(congressional_shp2024,congressional_2024preselec_data, 
+                                by="District")
+```
+
+The table below shows the districts where Biden would have gotten more votes than Trump.
+
+```{r}
+congressional_2024preselec_data%>%
+  filter(Percent_Dem>Percent_Rep)
+```
+
+The map below shows partisanship levels in each district in 2024 using the variable I created.
+
+```{r}
+ggplot(data=congressional_shp_preselec_2024) + geom_sf( aes(fill= (two_party_diff)), color="black")+
+    geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines")) +
+  scale_fill_gradient2(low = "#d14343", high = "#495ac9", midpoint = 0,
+                       name = "Two-Party Difference",
+                       limits= c(-.55,.55))+
+  ggthemes::theme_fivethirtyeight()+labs(title="2024 Congressional District Partisonship", subtitle="", caption="Source: NC General Assembly") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+There are  3 (out of 14) solid Democratic districts, while 48.57% % of the total population voted Democrat in the 2020 presidential election. This shows that the maps are skewed to favor Republicans.
+
+Next I wanted to examine the competitiveness of the Districts, I did this by ordering the absolute values of the *two_party_diff* variable in ascending order. 
+```{r}
+congressional_2024preselec_data%>%
+  arrange(abs(two_party_diff))
+```
+
+From the table, you can see that the only competitive district in the 2023 map is district 1. Every other district leans either Republican or Democrat by over 10 percent. 
+
+
+Next, I wanted to examine the same data for the 2022 district maps.
+
+```{r}
+#creating two party difference variable
+congressional_2022preselec_data<-congressional_2022preselec_data%>%
+  mutate(two_party_diff=Percent_Dem-Percent_Rep)
+
+congressional_shp2022$District<-as.double(congressional_shp2022$District)
+
+congressional_shp_preselec_2022<- left_join(congressional_shp2022,congressional_2022preselec_data, 
+                                by="District")
+```
+
+
+```{r fig.width=6}
+ggplot(data=congressional_shp_preselec_2022) + geom_sf( aes(fill= (two_party_diff)), color="black")+
+    geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines")) +
+  scale_fill_gradient2(low = "#d14343", mid = "white", high = "#495ac9", midpoint = 0,
+                       name = "Republican or \nDemocrat Lean",
+                       limits= c(-.55,.55))+
+  ggthemes::theme_fivethirtyeight()+labs(title="2022 Congressional District Partisonship", subtitle="", caption="Source: NC General Assembly") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+
+From this map you can see that in 2022 there were 6 Districts that leaned Democratic, 7 that leaned Republican and 1 that was a toss-up. This means that the Democratic party in NC is losing 3 safe seats. 
+
+To further examine this change I looked at the competitiveness of the districts in 2022:
+```{r}
+congressional_2022preselec_data%>%
+  arrange(abs(two_party_diff))
+```
+
+From the table, I found that in 2022 district 13 was more competitive than district 1. District 9 was also more competitive with less than a 10 percent margin between the two parties. 
+
+Next, I wanted to see how partisanship changed in each district from 2022 to 2024, specifically for the districts that trended towards Democrats in the 2022 maps.
+
+To do this I joined the two partisanship tables and created a new variable called *percent_dem_diff*, which found the difference in Democrat vote between the two years in each district.
+```{r}
+partisanship2022<- congressional_2022preselec_data%>%
+  select(District,Percent_Dem)%>%
+  rename(percent_dem2022=Percent_Dem)
+
+partisanship2024<- congressional_2024preselec_data%>%
+  select(District,Percent_Dem)%>%
+  rename(percent_dem2024=Percent_Dem)
+
+partisanship_diff<-left_join(partisanship2024,partisanship2022)%>%
+  mutate(percent_dem_diff=percent_dem2024-percent_dem2022)%>%
+  filter(District %in% c(1,6,4,12,2,14, 13))%>%
+  arrange(desc(percent_dem_diff))
+
+partisanship_diff
+```
+
+This table does the same thing but for differences in Trump vote percentage:
+```{r}
+rep_partisanship2022<- congressional_2022preselec_data%>%
+  select(District,Percent_Rep)%>%
+  rename(percent_rep2022=Percent_Rep)
+
+rep_partisanship2024<- congressional_2024preselec_data%>%
+  select(District,Percent_Rep)%>%
+  rename(percent_rep2024=Percent_Rep)
+
+rep_partisanship_diff<-left_join(rep_partisanship2024,rep_partisanship2022)%>%
+  mutate(percent_rep_diff=percent_rep2024-percent_rep2022)%>%
+  filter(District %in% c(1,6,4,12,2,14, 13))%>%
+  arrange(desc(percent_rep_diff))
+
+rep_partisanship_diff
+```
+
+The first table shows that districts 12,4, and 2 lean more Democratic in 2024 than in 2022. District 1 leads slightly more Republican, however I found that this was one of the most competitive districts in NC so the difference is important. 
+
+I second table shows that districts 13, 6 and 14 lean much more Republican than in 2022. The impact of this can be seen in the Democratic representatives in these districts not running for re-election. 
+
+Candidates not running for re-election:
+
+- Jeff Jackson (14)
+- Wiley Nickel (13)
+- Kathy Manning (6)
+
+In my pitch I focus on District 6, due to the large differences in partisanship and racial makeup I found between the 2022 and 2024 District.
+
+## References
+
+<!-- This section is for including references to related material -->
+- Congressional District Lawsuit: https://storage.courtlistener.com/recap/gov.uscourts.ncmd.97319/gov.uscourts.ncmd.97319.1.0_2.pdf
+- NAACP Lawsuit: https://drive.google.com/file/d/1idLVGxq4UZM89-1bHHMVZe6hM5ge5YIx/view
+
+ 
+
+### Contact Info
+
+*Lists contact info for people I would want to reach out about the story*
+
+- Hilary Harris Klein, hilaryhklein@scsj.org, works at Southern Coalition for Social Justice signee on NAACP lawsuit
+- Kathy Manning, (202) 225-3065, Democratic representative for NC-6
+

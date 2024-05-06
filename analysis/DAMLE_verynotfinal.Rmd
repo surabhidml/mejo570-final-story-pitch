@@ -1,0 +1,379 @@
+---
+title: "Surabhi Damle Final Story Pitch"
+date: "05/02/2024"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    df_print: paged
+
+#adapted from https://github.com/associatedpress/apstyle/blob/master/R/rmd_render.R     #using method from https://stackoverflow.com/questions/26174565/r-in-rstudio-how-do-i-make-knitr-output-to-a-different-folder-to-avoid-clutteri
+#make sure Tools -> Global Options -> R Markdown -> Evaluate chunks in directory is set to "project"
+knit: (function(inputFile, encoding) {rmarkdown::render(inputFile, encoding = encoding, knit_root_dir = rprojroot::find_rstudio_root_file(), output_dir = "docs")})
+---
+<!-- Timestamp: leave this in to automatically track when a file is rendered -->
+*Rendered at `r format(Sys.time(), '%I:%M %p, %b. %d, %Y')`*
+
+<!-- Contact info: leave author/reporter/editor contact info here -->
+*Surabhi Damle (<sdamle@unc.edu>)*
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE
+  )
+
+knitr::opts_knit$set(
+  root.dir = rprojroot::find_rstudio_root_file()
+  )
+```
+
+```{r initialize}
+#devtools::install_github("associatedpress/apstyle")
+library(apstyle) #AP ggplot theme can be applied to a ggplot object via + theme_ap()
+
+
+# Load files, environment variables, libraries, etc. here
+library(tidyverse)
+library(tidycensus)
+
+#Data Below was downloaded from NC General Assmebly:
+house_shp <- sf::st_read("data/house shape file/SL 2023-149.shp") #2024 NC House Districts
+
+congressional_shp2024 <- sf::st_read("data/congressional shape file/SL 2023-145.shp")#Congressional District file for 2024
+
+congressional_shp2022 <- sf::st_read("data/interim 2022 congressional shape file/Interim Congressional.shp")#Congressional Districts for 2022 interim map
+
+
+#All data loaded in below was converted from PDF to CSV using Tabula and is from NC General Assembly 
+
+congressional_race_data <- read_csv("data/congressional_race_data.csv")#Congressional race data for 2024
+
+house_race_data <- read_csv("data/house_race_data.csv") #2024 NC House Race Data
+
+congressional_party_data <- read_csv("data/congressional_party_data.csv")#2024 Congressional party registration data
+
+congressional_2024preselec_data <- read_csv("data/congressional_2024_preselection.csv")#2024 Congressional Districts with corresponding 2020 presidential election vote share
+
+#Data that uses Census API and tidycensus is loaded in Data Interview section
+```
+
+<!-- Project structure adapted from https://github.com/associatedpress/cookiecutter-r-project. To use on your computer follow these instructions: https://datakit.ap.org/  -->
+
+## Story Pitch
+
+<!-- This section is for writing your three-ish paragraph story pitch. -->
+
+**Put Title Here**
+New congressional maps lead to three Deomcratic memebers of Congress to drop re-election campaigns
+
+Three Democratic congressman -- Jeff Jackson, Kathy ..  and Wiley Nickel --in NC are not running for relelection in 2024. Why - their districts no longer exist. 
+
+*Insert maps here*
+
+Jackson, original district 13 had a trump vote of __, while the 2024 district leans republican by 17%. Similarly Nickel -- .
+
+However, in the state of North Carolina the tactic of partisan gerrymadering is compleltely legal. Thus, civil rights leaders aim to prove racial gerrymandering. In 2022, Jackson district was --, now it is --- % Black. 
+
+To be sure paragraph 
+
+PITCH
+
+- Redistricting is a topic that comes up again and again North Carolina, however I think there is much to explore regarding the new 2023 congressional maps, and how they will affect voters in the fall. 
+
+## Data Interview
+<!-- This section is for the final clean transcript of your data interview. -->
+
+I started out by examining data on the NC State House: 
+
+My original objective was to see if I could see visual evidence of racial gerrymandering in NC congressional and State Assembly district maps. The drawing of specifically congressional Districts is something that has repeatedly been brought to the courts. In NC, partisan gerrymandering is legal, however racial gerrymandering is because of federal voting rights acts. 
+
+
+
+```{r}
+#makes sure data frames can be joined
+house_shp<-house_shp%>%
+  rename("District"="DISTRICT")
+house_shp$District<-as.double(house_shp$District)
+```
+
+```{r}
+#joining data frames
+house_race_data_shp<- left_join(house_shp,house_race_data, 
+                                by="District")
+```
+
+Plots percent of Black population in every house district:
+```{r echo=T}
+ggplot() + geom_sf(data=house_race_data_shp, aes(fill= Percent_Black)) +  scale_fill_distiller(direction=1, name="Percent Black Population")+
+  labs(title="Percent Black Population by State House District")+
+  theme_void()
+```
+From this map, the first thing I noticed was the districts in the north east, and metropolitan areas that had a high Black population. However this doesn't tell us anything about gerrymandering.
+
+Loading 2022 NC house district maps with race statistics using tidycensus:
+```{r echo = T, results = 'hide'}
+house_race_2022<- get_acs(geography = "state legislative district (lower chamber)",
+              variables = "B02001_003",
+              summary_var = "B02001_001",
+              state="NC",
+              year=2022,
+              geometry = T)
+#loads all possible variables:
+acs_20_vars = load_variables(
+                           year = 2020, 
+                           "acs5",
+                           cache = TRUE
+                          )
+```
+
+
+```{r}
+house_race_2022<- house_race_2022%>%
+  mutate(percent_black=estimate/summary_est)
+
+ggplot() + geom_sf(data=house_race_2022, aes(fill= percent_black)) +  scale_fill_distiller(direction=1, name="Percent Black Population")+
+  labs(title=" Black Population by State House District in 2022")+
+  theme_void()
+```
+Examining these maps, I noticed that the district lines looked very similar to 2024. This doesn't mean they are or are not gerrymandered, just that there is no current story. 
+
+
+I still decided to break this down further by tract, so I can see additional patterns:
+```{r echo = T, results = 'hide'}
+
+
+ggplot(data=census_tract_race) + geom_sf( aes(fill= percent_black), color=NA) +  
+  labs(title="2024 State Senate Districts with Percent Black Population")+
+  viridis::scale_fill_viridis(direction=-1)+
+geom_sf(data=house_shp, fill=NA, color="black")+
+  theme_void()
+```
+
+This looks very difficult to reas so I decided to look at congressional maps with this same data instead. 
+
+Loading in congressional shape data for 2024:
+```{r echo = T, results = 'hide'}
+```
+
+```{r}
+ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="2024 Congressional Districts with Percent Black Population")+  
+geom_sf(data=congressional_shp2024, fill=NA, color="black")+ viridis::scale_fill_viridis(direction=-1)+
+  geom_sf_label(data= congressional_shp2024, aes(label = DISTRICT), size = 3, color = "white", fill = NA, label.size = 0.5, label.padding = unit(.1, "lines"))+
+  theme_void()
+```
+"Congressional Districts 1, 6, 12, and 14 are unconstitutional racial gerrymanders" - from court doc
+
+
+```{r}
+```
+
+```{r}
+#makes sure data frames can be joined
+congressional_shp2024<-congressional_shp2024%>%
+  rename("District"="DISTRICT")
+congressional_shp2024$District<-as.double(congressional_shp2024$District)
+```
+
+```{r fig.width=6}
+congressional_shp_race_2024<- left_join(congressional_shp2024,congressional_race_data, 
+                                by="District")
+ggplot(data=congressional_shp_race_2024) + geom_sf(aes(fill= Percent_Black), color="black") +  
+     geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines"))+
+  scale_fill_gradient2(low = "white", high = "#6a429e",
+                       name = "Percent Black Population",
+                       limits= c(0,.5))+
+  ggthemes::theme_fivethirtyeight()+labs(title="2024 Congressional Districts with Percent Black Population", subtitle="", caption="Source:Census") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+See if there is a difference between this and 2022. 
+
+Using Census API: (I don't know which version of 2022 this is, need to look at maps)
+```{r echo = T, results = 'hide'}
+congressional_race_2022<- get_acs(geography = "congressional district",
+              variables = "B02001_003",
+              summary_var = "B01003_001",
+              state="NC",
+              year=2022,
+              geometry = T)
+
+congressional_race_2022<-congressional_race_2022%>%
+  mutate(percent_black= estimate/summary_est)
+View(congressional_race_2022)
+```
+
+
+```{r}
+congressional_race_2022<-congressional_race_2022%>%
+    mutate(District = str_trim(NAME)) %>%
+  mutate(District = str_sub(District,1,str_length(District)-33))%>%
+           mutate(District=str_sub(District,24))
+
+congressional_race_2022$District<-as.double(congressional_race_2022$District)
+         
+```
+
+```{r fig.width=6}
+ggplot(data=congressional_race_2022) + geom_sf(aes(fill= percent_black), color="black") +  
+     geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines"))+
+  scale_fill_gradient2(low = "white", high = "#6a429e",
+                       name = "Percent Black Population",
+                       limits= c(0,.5))+
+  ggthemes::theme_fivethirtyeight()+labs(title="2022 Congressional Districts with Percent Black Population", subtitle="", caption="Source:Census") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+
+```{r}
+```
+```{r}
+
+```
+
+```{r}
+ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
+  labs(title="2022 Congressional Districts with Percent Black Population")+  
+geom_sf(data=congressional_shp2022, fill=NA, color="black")+
+  viridis::scale_fill_viridis(direction=-1)+
+  theme_void()
+```
+ 
+ 
+
+Examining Changes in Party Affiliation in Congressional Districts:
+```{r}
+```
+
+```{r}
+congressional_shp_party_2024<- left_join(congressional_shp2024,congressional_party_data, 
+                                by="District")
+
+max(congressional_shp_party_2024$Percent_Dem)
+min(congressional_shp_party_2024$Percent_Dem)
+```
+
+```{r}
+congressional_party_data%>%
+  filter(Percent_Dem>=0.39)
+```
+
+```{r fig.width=6}
+ggplot(data=congressional_shp_party_2024) + geom_sf(aes(fill= (Percent_Dem)), color="black")+
+  geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines")) +  # Adjust label.size and label.padding as needed
+  scale_fill_gradient(low = "white", high = "#008FD5",
+                      breaks = c(0.25,0.5),  # set breaks
+                      limits= c(0.25,0.5),
+                      name = "Percentage\nRegistered\nDemocrat")+
+  ggthemes::theme_fivethirtyeight()+labs(title="Percentage Registred Democratic Voters in 2024", subtitle="The 2024 Congressional Maps create 4 districts with more than 40% registered Democrats.", caption="Source: NC General Assembly") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+
+```{r}
+congressional_2024preselec_data<-congressional_2024preselec_data%>%
+  mutate(two_party_diff=Percent_Dem-Percent_Rep)
+
+
+congressional_shp_preselec_2024<- left_join(congressional_shp2024,congressional_2024preselec_data, 
+                                by="District")
+```
+
+
+```{r}
+congressional_2024preselec_data%>%
+  filter(Percent_Dem>=0.5)
+
+
+```
+
+```{r}
+ggplot(data=congressional_shp_preselec_2024) + geom_sf( aes(fill= (two_party_diff)), color="black")+
+    geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines")) +
+  scale_fill_gradient2(low = "#d14343", high = "#495ac9", midpoint = 0,
+                       name = "Two-Party Difference",
+                       limits= c(-.55,.55))+
+  ggthemes::theme_fivethirtyeight()+labs(title="2024 Congressional District Partisonship", subtitle="", caption="Source: NC General Assembly") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+You can see there are  3 (out of 14) solid Democratic Districts, while 48.57% % of the total population voted Democrat in the 2020 presidential election. 
+
+```{r}
+congressional_2022preselec_data <- read_csv("data/congressional_2022interim_preselection.csv")
+congressional_2022preselec_data<-congressional_2022preselec_data%>%
+  mutate(two_party_diff=Percent_Dem-Percent_Rep)
+
+#code below allows the two data frames to be joined
+congressional_shp2022<-congressional_shp2022%>%
+  rename("District"="DISTRICT")
+
+congressional_shp2022$District<-as.double(congressional_shp2022$District)
+
+congressional_shp_preselec_2022<- left_join(congressional_shp2022,congressional_2022preselec_data, 
+                                by="District")
+```
+
+
+```{r fig.width=6}
+ggplot(data=congressional_shp_preselec_2022) + geom_sf( aes(fill= (two_party_diff)), color="black")+
+    geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines")) +
+  scale_fill_gradient2(low = "#d14343", mid = "white", high = "#495ac9", midpoint = 0,
+                       name = "Republican or \nDemocrat Lean",
+                       limits= c(-.55,.55))+
+  ggthemes::theme_fivethirtyeight()+labs(title="2022 Congressional District Partisonship", subtitle="", caption="Source: NC General Assembly") +
+  theme(axis.text.x = element_blank(), 
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+```
+
+
+## References
+
+<!-- This section is for including references to related material -->
+
+- CREDO National Charter School Study 2013: http://credo.stanford.edu/documents/NCSS%202013%20Final%20Draft.pdf
+
+- NBER Working Paper No. 23947: The Labor Market Effects of Offshoring by U.S. Multinational Firms: Evidence from Changes in Global Tax Policies: http://www.nber.org/papers/w23947
+
+- Lawsuit ()
+
+
+<!-- This section is for a tests code block -->
+
+```{r tests}
+# Leave this block of code at the end of the file
+# If a test fails it will stop the Rmd document from knitting
+# Run tests like so:
+# source("tests/etl_test.R")
+```
