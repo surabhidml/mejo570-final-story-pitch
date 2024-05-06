@@ -130,7 +130,7 @@ Greensboro and Winston-Salem are divided between districts",
 ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
   labs(title="Congressional District 6 in 2022", 
        fill="Percentage Black population", 
-       subtitle="The 2022 congressional maps preserve the Triad to mostly one district. 
+       subtitle="The 2022 congressional maps preserve the Triad to mostly one district. Here, 
 District 6 contains Greensboro, High Point, and parts of Winston-Salem.",
        caption= "Source: NC Census Bureau and NC General Assembly")+  
 geom_sf(data=congressional_shp2022, fill=NA, color="black", size=5)+
@@ -152,13 +152,14 @@ geom_sf(data=congressional_shp2022, fill=NA, color="black", size=5)+
 ```
 
 
-The new maps show signs of the gerrymandering practice, cracking, where minority votes are split between districts to weaken their power. The new district also leans Republican with 14 percent more voters in the choosing Trump in 2020, than in the old district. This shift has led current Democratic representative, Kathy Manning, not to seek re-election. 
+The new maps show signs of the gerrymandering practice, cracking, where minority votes are split between districts to weaken their power. The new district also leans Republican with 14 percent more voters choosing Trump in 2020, than in the old district. This shift has led current Democratic representative, Kathy Manning, not to seek re-election. 
 
-To be sure, the NC General Assembly said they did not use racial data to draw the district lines. Districts 1, 12 and 14 are also challenged in lawsuits. 
+To be sure, the NC General Assembly said they did not use racial data to draw the district lines. Districts 1, 12 and 14 were also challenged in lawsuits. 
 
 **Pitch memo**
 
-Redistricting is a topic that comes up again and again in North Carolina, however, there is much to explore regarding the new 2023 congressional maps. Although many stories have been written about the issue already, not many stories out there focus on the local impact of redistricting. My story would take a local angle looking just at District 6 in NC, and how voters in the area feel about these changes. The story is timely with the upcoming 2024 elections and covers an issue in North Carolina that limits democracy in the state. Additionally, these districts in North Carolina could determine who wins control of the House in the fall, so there is a national relevance to this local story. The data for this story is nearly all publicly available online. I believe with more time and analysis, I could determine more specifically which communities in the Triad region would be impacted by redistricting.
+Redistricting is a topic that comes up again and again in North Carolina, however, there is much to explore regarding the new 2023 congressional maps. Although many stories have been written about the issue already, not many stories out there focus on the local impact of redistricting. My story would take a local angle looking just at District 6 in NC, and how voters in the area feel about these changes. The story is timely with the upcoming 2024 elections and covers an issue that limits democracy in the state. Additionally, these districts could determine who wins control of the House in the fall, so there is a national relevance to this local story. The data for this story is nearly all publicly available online. The one piece of data that I don’t believe is easily accessible is the race data for the older 2022 maps that were ruled unconstitutional. However, the Census API could be used to examine older district maps. I believe with more time and analysis, I could determine more specifically which communities in the Triad region would be impacted by redistricting.
+
 
 ## Data Interview
 <!-- This section is for the final clean transcript of your data interview. -->
@@ -199,6 +200,7 @@ According to one [lawsuit](https://storage.courtlistener.com/recap/gov.uscourts.
 Overall, from this map I could tell that some districts look really oddly shaped. In District 6, it looks like "cracking" gerrymandering methods were used. However to get a more clear understanding I wanted to compare these maps to those of 2022. The 2022 maps were court mandated, due to previous gerrymandering lawsuits.
 
 Examining 2022 maps:
+
 ```{r}
 ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
   labs(title="2022 Congressional Districts with Percent Black Population",
@@ -287,6 +289,7 @@ ggplot(data=congressional_race_2022) + geom_sf(aes(fill= percent_black), color="
         axis.title.x = element_blank(),
         axis.title.y = element_blank())
 ```
+
 From the 2022 map we see, that there appears to be more districts with a higher black population.
 
 The code below sorts the race data to further examine trends. 
@@ -371,8 +374,8 @@ Next I wanted to examine the same map for 2022 to see the differences:
 p2<-ggplot() + geom_sf(data=census_tract_race, aes(fill= percent_black), color=NA) +  
   labs(title="Congressional District 6 in 2022", 
        fill="Percentage Black population", 
-       subtitle="The 2022 congressional maps preserve the Triad to mostly one district. 
-District 6 contains Greensboro, High Point, and parts of Winston Salem.",
+       subtitle="The 2022 congressional maps preserve the Triad to mostly one district. Here, District 6 
+contains Greensboro, High Point, and parts of Winston-Salem.",
        caption= "Source: NC Census Bureau and NC General Assembly")+  
 geom_sf(data=congressional_shp2022, fill=NA, color="black", size=5)+
   viridis::scale_fill_viridis(direction=-1)+
@@ -422,7 +425,7 @@ congressional_2024preselec_data%>%
 
 The map below shows partisanship levels in each district in 2024 using the variable I created.
 
-```{r}
+```{r fig.width=7}
 ggplot(data=congressional_shp_preselec_2024) + geom_sf( aes(fill= (two_party_diff)), color="black")+
     geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines")) +
   scale_fill_gradient2(low = "#d14343", high = "#495ac9", midpoint = 0,
@@ -440,7 +443,7 @@ ggplot(data=congressional_shp_preselec_2024) + geom_sf( aes(fill= (two_party_dif
 
 There are  3 (out of 14) solid Democratic districts, while 48.57% % of the total population voted Democrat in the 2020 presidential election. This shows that the maps are skewed to favor Republicans.
 
-Next I wanted to examine the competitiveness of the Districts, I did this by ordering the absolute values of the *two_party_diff* variable in ascending order. 
+Next I wanted to examine the competitiveness of the districts, I did this by ordering the absolute values of the *two_party_diff* variable in ascending order. 
 ```{r}
 congressional_2024preselec_data%>%
   arrange(abs(two_party_diff))
@@ -463,7 +466,7 @@ congressional_shp_preselec_2022<- left_join(congressional_shp2022,congressional_
 ```
 
 
-```{r fig.width=6}
+```{r fig.width=7}
 ggplot(data=congressional_shp_preselec_2022) + geom_sf( aes(fill= (two_party_diff)), color="black")+
     geom_sf_label(aes(label = District), size = 3, color = "white", fill = "black", label.size = 0.5, label.padding = unit(.1, "lines")) +
   scale_fill_gradient2(low = "#d14343", mid = "white", high = "#495ac9", midpoint = 0,
@@ -538,7 +541,7 @@ Candidates not running for re-election:
 - Wiley Nickel (13)
 - Kathy Manning (6)
 
-In my pitch I focus on District 6, due to the large differences in partisanship and racial makeup I found between the 2022 and 2024 District.
+In my pitch I focus on District 6, due to the large differences in partisanship and racial make up I found between the 2022 and 2024 District.
 
 ## References
 
